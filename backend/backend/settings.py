@@ -77,8 +77,25 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'mysql.connector.django',
+        # 'ENGINE': 'django.db.backends.mysql.connector',
+        'NAME': 'profiles',
+        'USER' : 'janekeyes',
+        'PASSWORD': '1Reppinxo!',
+        'HOST': 'localhost', 
+        'PORT': '3306',
+    },
+    'clothing': {
+    'ENGINE': 'mysql.connector.django',
+        # 'ENGINE': 'django.db.backends.mysql.connector',
+        'NAME': 'clothing',
+        'USER': 'janekeyes',
+        'PASSWORD': '1Reppinxo!',
+        'HOST': 'localhost',
+        'PORT': '3306',
+        'OPTIONS': {
+            'charset': 'utf8mb4',  # Supports all characters (including emojis)
+        },
     }
 }
 
