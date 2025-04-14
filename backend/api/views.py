@@ -1,49 +1,12 @@
-# from django.http import JsonResponse
-# from django.views.decorators.csrf import csrf_exempt
-# import json
-# from .models import UserProfile, ClothingItem
-
-
-# @csrf_exempt
-# def register(request):
-#     if request.method == 'POST':
-#         data = json.loads(request.body)
-#         username = data['username']
-#         email = data['email']
-#         password = data['password']
-
-#         if UserProfile.objects.filter(username=username).exists():
-#             return JsonResponse({'error': 'Username already exists'}, status=400)
-
-#         user = UserProfile(username=username, email=email, password=password)
-#         user.save()
-#         return JsonResponse({'message': 'User registered successfully'})
-
-# @csrf_exempt
-# def login_user(request):
-#     if request.method == 'POST':
-#         data = json.loads(request.body)
-#         username = data.get('username')
-#         email = data.get('email')
-#         password = data['password']
-
-#         user = UserProfile.objects.filter(username=username, password=password).first() or \
-#                UserProfile.objects.filter(email=email, password=password).first()
-
-#         if user:
-#             return JsonResponse({'message': 'Login successful', 'username': user.username})
-#         return JsonResponse({'error': 'Invalid credentials'}, status=400)
-
-# @csrf_exempt
-# def get_clothing_items(request):
-#     if request.method == 'GET':
-#         clothing_items = list(ClothingItem.objects.values())
-#         return JsonResponse(clothing_items, safe=False)
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.hashers import make_password, check_password
 import json
 from .models import UserProfile, ClothingItem
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from .serializers import ClothingItemSerializer
 
 
 # Register view with password hashing
@@ -99,9 +62,20 @@ def login_user(request):
         return JsonResponse({'error': 'User not found'}, status=400)
 
 
-# Get clothing items view
-@csrf_exempt
-def get_clothing_items(request):
-    if request.method == 'GET':
-        clothing_items = list(ClothingItem.objects.values())
-        return JsonResponse(clothing_items, safe=False)
+# Get clothing items view using Django Rest Framework
+class ClothingItemListView(APIView):
+    def get(self, request, *args, **kwargs):
+        items = ClothingItem.objects.all()  # Query all clothing items from the database
+        serializer = ClothingItemSerializer(items, many=True)  # Serialize the items
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def post(self, request, *args, **kwargs):
+        # Handle POST requests to create a new clothing item
+        data = request.data  # Automatically parses JSON data
+        serializer = ClothingItemSerializer(data=data)
+
+        if serializer.is_valid():
+            serializer.save()  # Save the new clothing item
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
