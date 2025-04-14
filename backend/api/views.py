@@ -2,11 +2,11 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.hashers import make_password, check_password
 import json
-from .models import UserProfile, ClothingItem
+from .models import UserProfile, Clothing
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .serializers import ClothingItemSerializer
+from .serializers import ClothingSerializer
 
 
 # Register view with password hashing
@@ -61,21 +61,17 @@ def login_user(request):
         
         return JsonResponse({'error': 'User not found'}, status=400)
 
-
-# Get clothing items view using Django Rest Framework
-class ClothingItemListView(APIView):
-    def get(self, request, *args, **kwargs):
-        items = ClothingItem.objects.all()  # Query all clothing items from the database
-        serializer = ClothingItemSerializer(items, many=True)  # Serialize the items
+class ClothingListView(APIView):
+    def get(self, request):
+        clothing_items = Clothing.objects.all()
+        serializer = ClothingSerializer(clothing_items, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-    def post(self, request, *args, **kwargs):
-        # Handle POST requests to create a new clothing item
-        data = request.data  # Automatically parses JSON data
-        serializer = ClothingItemSerializer(data=data)
-
+    def post(self, request):
+        serializer = ClothingSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save()  # Save the new clothing item
+            serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 

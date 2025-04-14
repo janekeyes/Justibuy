@@ -1,0 +1,18 @@
+to add new clothes to the database
+
+cd backend
+python manage.py shell
+from api.models import Clothing
+from django.core.files import File
+with open('media/clothing_images/dress1.jpg', 'rb') as image_file:
+    clothing_item = Clothing.objects.create(
+        name='Dress 1',
+        category='Top',
+        description='A beautiful dress',
+        size='L',
+        price=29.99,
+        image=File(image_file, name='dress1.jpg')
+    )
+Clothing.objects.all()
+
+http://localhost:8000/media/clothing_images/dress2.jpg

@@ -13,13 +13,14 @@ class UserProfile(models.Model):
         return self.username
 
 
-class ClothingItem(models.Model):
+
+class Clothing(models.Model):
     name = models.CharField(max_length=255)
-    description = models.TextField()
-    category = models.CharField(max_length=100)
-    image = models.CharField(max_length=500)  
+    category = models.CharField(max_length=255)
+    description = models.CharField(max_length=255)
+    size = models.CharField(max_length=50, null=True, blank=True)
     price = models.DecimalField(max_digits=10, decimal_places=2)
-    link = models.CharField(max_length=500)
+    image = models.ImageField(upload_to='clothing_images/', blank=True, null=True)  # Ensure upload path is correct
 
     def __str__(self):
         return self.name

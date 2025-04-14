@@ -1,9 +1,11 @@
 from django.urls import path
-from api.views import RegisterUser, login_user, ClothingItemListView
+from .views import RegisterUser, login_user, ClothingListView
+from django.conf import settings
+from django.conf.urls.static import static
 
 urlpatterns = [
     path('register/', RegisterUser, name='register'),
     path('login/', login_user, name='login'),
-    path('clothing-items/', ClothingItemListView.as_view(), name='clothing-items'),
-]
+    path('clothing/', ClothingListView.as_view(), name='clothing-list'),  # Use class-based view here
+] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
