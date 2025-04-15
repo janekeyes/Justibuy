@@ -16,3 +16,63 @@ with open('media/clothing_images/dress1.jpg', 'rb') as image_file:
 Clothing.objects.all()
 
 http://localhost:8000/media/clothing_images/dress2.jpg
+
+
+Why the Frontend and Backend Must Be on the Same Network (or IP Accessible)
+When working with a React Native app (frontend) and a Django backend API, the frontend needs to make HTTP requests (like fetch or axios) to the backend to retrieve or send data — for example, to load clothing items with images.
+
+If the frontend is running on a physical device or emulator, it must be able to reach the backend server via its IP address — not localhost (127.0.0.1). This is because:
+
+localhost refers to the device itself, so if your mobile device or emulator sees 127.0.0.1, it thinks you're referring to its own internal system, not your laptop/desktop running the Django server.
+
+Your Django backend is running on your computer, and your mobile device/emulator is on the same local Wi-Fi network, but it's still a separate device.
+
+✅ Therefore, you must replace http://127.0.0.1:8000/ with your computer's local IP address, like http://192.168.0.10:8000/, so the mobile device/emulator can reach it.
+
+🚨 What's going wrong:
+Your Django server is running on 127.0.0.1:8000, which only your own PC can access —
+but your Expo app is running on a device (emulator or phone) using your local IP address (192.168.0.52) to access the backend.
+
+➡️ Your frontend cannot reach 127.0.0.1 on your machine — it needs the actual local IP of your PC.
+
+✅ The Fix:
+🛠 Step 1: Start Django with external IP support
+In your terminal, go to your backend directory and run:
+
+bash
+Copy
+Edit
+python manage.py runserver 0.0.0.0:8000
+This allows Django to accept connections from other devices (like your emulator or phone).
+
+🛠 Step 2: Use your PC's IP in the frontend
+Find your local IP address (on the same Wi-Fi) by running:
+
+bash
+Copy
+Edit
+ipconfig    # Windows
+Look for IPv4 Address, something like 192.168.0.10.
+
+Then in your index.tsx, update the fetch URL:
+
+tsx
+Copy
+Edit
+fetch('http://192.168.0.10:8000/api/clothing/')
+🛠 Step 3: Allow firewall access (if needed)
+If it still doesn't connect:
+
+Temporarily disable your firewall
+
+Or go to Windows Defender Firewall → Allow an app → make sure Python is allowed on private networks
+
+🧪 Final test:
+Open this in your emulator’s or phone’s browser:
+
+ruby
+Copy
+Edit
+http://192.168.0.10:8000/api/clothing/
+If you see JSON — you're good to go! If it doesn’t load, it’s still a firewall or network isolation issue.
+
