@@ -4,14 +4,14 @@ cd backend
 python manage.py shell
 from api.models import Clothing
 from django.core.files import File
-with open('media/clothing_images/dress1.jpg', 'rb') as image_file:
+with open('C:/Users/janek/OneDrive - National College of Ireland/Desktop/blouse.jpg', 'rb') as image_file:
     clothing_item = Clothing.objects.create(
-        name='Dress 1',
+        name='Flowy Blouse',
         category='Top',
-        description='A beautiful dress',
-        size='L',
-        price=29.99,
-        image=File(image_file, name='dress1.jpg')
+        description='A black beautiful blouse',
+        size='m',
+        price=19.99,
+        image=File(image_file, name='blouse2.jpg')
     )
 Clothing.objects.all()
 
