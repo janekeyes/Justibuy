@@ -1,4 +1,4 @@
-from django.core.files.base import ContentFile
+#from django.core.files.base import ContentFile
 from django.db import models
 from .utils import orb_keypoint_detection
 
@@ -34,9 +34,10 @@ class Clothing(models.Model):
                 keypoints, descriptors = orb_keypoint_detection(self.image.path)
       
                 if descriptors is not None:
-                    desc_bytes = descriptors.tobytes()
-                    self.keypoint_value = desc_bytes
-                    super().save(update_fields=['keypoint_value'])
+                    #desc_bytes = descriptors.tobytes()
+                    self.keypoint_value = descriptors.tobytes()
+                    #super().save(update_fields=['keypoint_value'])
+                    Clothing.objects.filter(pk=self.pk).update(keypoint_value=self.keypoint_value)
 
             except Exception as e:
                 print(f"Error processing ORB keypoints: {e}")

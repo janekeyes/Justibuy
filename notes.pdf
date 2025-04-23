@@ -4,18 +4,18 @@ cd backend
 python manage.py shell
 from api.models import Clothing
 from django.core.files import File
-with open('C:/Users/janek/OneDrive - National College of Ireland/Desktop/blouse.jpg', 'rb') as image_file:
+with open('C:/Users/janek/OneDrive - National College of Ireland/Desktop/sequintop.jpg', 'rb') as image_file:
     clothing_item = Clothing.objects.create(
         name='Flowy Blouse',
         category='Top',
         description='A black beautiful blouse',
         size='m',
         price=19.99,
-        image=File(image_file, name='blouse2.jpg')
+        image=File(image_file, name='sequintop.jpg')
     )
 Clothing.objects.all()
 
-http://localhost:8000/media/clothing_images/dress2.jpg
+http://localhost:8000/media/clothing_images/sequintop.jpg
 
 
 Why the Frontend and Backend Must Be on the Same Network (or IP Accessible)

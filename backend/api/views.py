@@ -1,6 +1,7 @@
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.hashers import make_password, check_password
+from django.core.files.uploadedfile import InMemoryUploadedFile
 import json
 from .models import UserProfile, Clothing
 from rest_framework.views import APIView
@@ -11,28 +12,98 @@ from .utils import orb_keypoint_detection
 from rest_framework.decorators import api_view
 from rest_framework import status
 from rest_framework.parsers import MultiPartParser, FormParser
+import numpy as np
+import cv2
+import pickle
 
-@api_view(['POST'])
-def user_image_process(request):
-    try:
-        # gets the user uploaded image as base 64
-        user_image_data = request.data.get('image')
-        if not user_image_data:
-            return Response({'error': 'Could not find image'}, status=400)
+# @api_view(['POST'])
+# def user_image_process(request):
+#     try:
+#         # gets the user uploaded image 
+#         user_image_data = request.data.get('image')
+#         if not user_image_data:
+#             return Response({'error': 'Could not find image'}, status=400)
         
-        #call method from utils
-        keypoints, _ = orb_keypoint_detection(user_image_data, is_base64=True)
+#         #save file temporarily for open cv
+#         temporary_path = user_image_data.temporary_file_path() if hasattr(user_image_data, 'temporary_file_path') else None
+#         if not temporary_path:
+#             #save the temporary file manually 
+#             import tempfile
+#             with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as tmp:
+#                 for chunk in user_image_data.chunks():
+#                     tmp.write(chunk)
+#                 temporary_path = tmp.name
+        
+#         #call method from utils
+#         keypoints, descriptors = orb_keypoint_detection(temporary_path)
 
-        #return the number of keypoints detected
-        return Response({
-            'keypoints_detected': len(keypoints)
+#         #find and compare with existing clothing items in the database
+#         database_items = Clothing.objects.exclude(keypoint_value=None)
+#         results = compare_keypoints(descriptors, database_items)
 
-        })
-    except Exception as e:
-        return Response({'error': str(e)}, status=500)
+#         #return best match
+#         if results:
+#             best_match = results[0]
+#             return Response({
+#                 'match': best_match['clothing'].id,
+#                 'name': best_match['clothing'].name,
+#                 'avg_distance': best_match['average_distance'],
+#                 'num_matches': best_match['number_of_matches'],
+#             })
+#         else:
+#             return Response({'message': 'could not find a match'}, status=404)
+
+#         #return the number of keypoints detected
+#         # return Response({
+#         #     'keypoints_detected': len(keypoints)
+
+#         # })
+#     except Exception as e:
+#         return Response({'error': str(e)}, status=500)
     
+class ClothingSearchView(APIView):
+    parser_classes = [MultiPartParser, FormParser]
 
+    def post(self, request, *args, **kwargs):
+        user_image = request.FILES.get('image')
 
+        if not isinstance(user_image, InMemoryUploadedFile):
+            return Response({'error': 'No valid image provided'}, status=400)
+
+        # Extract ORB keypoints from user image
+        user_descriptors = orb_keypoint_detection(user_image)
+        if user_descriptors is None:
+            return Response({'error': 'Could not extract features from image'}, status=400)
+
+        # Initialize matcher
+        bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
+
+        matches_per_item = []
+
+        # Loop through clothing items to compare ORB descriptors
+        for item in Clothing.objects.all():
+            if not item.keypoint_value:
+                continue
+
+            db_descriptors = pickle.loads(item.keypoint_value)
+
+            if db_descriptors is None or len(db_descriptors) == 0:
+                continue
+
+            try:
+                matches = bf.match(user_descriptors, db_descriptors)
+                score = sum([m.distance for m in matches]) / len(matches)
+                matches_per_item.append((item, score))
+            except cv2.error:
+                continue
+
+        # Sort by score (lower is better)
+        matches_per_item.sort(key=lambda x: x[1])
+        best_matches = [item for item, score in matches_per_item[:5]]  # Limit to top 5 matches
+
+        # Serialize and return the best matches
+        serialized = ClothingSerializer(best_matches, many=True)
+        return Response(serialized.data, status=200)
 
 
 
@@ -100,7 +171,7 @@ class ClothingListView(APIView):
         #retrives the image from the frontend request
         image_file = request.FILES.get('image')
         if not image_file:
-            return Response ({"error" : "Image file is required"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response ({"error" : "Image is required"}, status=status.HTTP_400_BAD_REQUEST)
         
         try:
             serializer = ClothingSerializer(data=request.data)
