@@ -12,9 +12,11 @@ from .utils import orb_keypoint_detection
 from rest_framework.decorators import api_view
 from rest_framework import status
 from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.generics import RetrieveAPIView
 import numpy as np
 import cv2
 import pickle
+# import logging
 
 # @api_view(['POST'])
 # def user_image_process(request):
@@ -60,7 +62,8 @@ import pickle
 #         # })
 #     except Exception as e:
 #         return Response({'error': str(e)}, status=500)
-    
+
+# logger = logging.getLogger(__name__)    
 class ClothingSearchView(APIView):
     parser_classes = [MultiPartParser, FormParser]
 
@@ -70,41 +73,52 @@ class ClothingSearchView(APIView):
         if not isinstance(user_image, InMemoryUploadedFile):
             return Response({'error': 'No valid image provided'}, status=400)
 
-        # Extract ORB keypoints from user image
-        user_descriptors = orb_keypoint_detection(user_image)
-        if user_descriptors is None:
-            return Response({'error': 'Could not extract features from image'}, status=400)
+        try:
+            # Save the uploaded image to a temporary file
+            import tempfile
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as tmp:
+                for chunk in user_image.chunks():
+                    tmp.write(chunk)
+                temp_path = tmp.name
 
-        # Initialize matcher
-        bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
+            # Extract descriptors
+            _, user_descriptors = orb_keypoint_detection(temp_path)
+            if user_descriptors is None:
+                return Response({'error': 'Could not extract features from image'}, status=400)
 
-        matches_per_item = []
+            bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
+            matches_per_item = []
 
-        # Loop through clothing items to compare ORB descriptors
-        for item in Clothing.objects.all():
-            if not item.keypoint_value:
-                continue
+            for item in Clothing.objects.exclude(keypoint_value=None):
+                try:
+                    db_descriptors = np.frombuffer(item.keypoint_value, dtype=np.uint8)
+                    db_descriptors = db_descriptors.reshape(-1, 32)
 
-            db_descriptors = pickle.loads(item.keypoint_value)
+                    # #Debug: print the descriptor lengths
+                    # logger.info(f"Comparing with item ID {item.id}")
+                    # logger.info(f"User descriptors length: {len(user_descriptors)}")
+                    # logger.info(f"Database descriptors length: {len(db_descriptors)}")
 
-            if db_descriptors is None or len(db_descriptors) == 0:
-                continue
+                    matches = bf.match(user_descriptors, db_descriptors)
+                    if matches:
+                        score = sum([m.distance for m in matches]) / len(matches)
+                        matches_per_item.append((item, score))
+                except Exception as e:
+                    print(f"Matching error for item {item.id}: {e}")
+                    continue
 
-            try:
-                matches = bf.match(user_descriptors, db_descriptors)
-                score = sum([m.distance for m in matches]) / len(matches)
-                matches_per_item.append((item, score))
-            except cv2.error:
-                continue
+            matches_per_item.sort(key=lambda x: x[1])
+            best_matches = [item for item, score in matches_per_item[:5]]
 
-        # Sort by score (lower is better)
-        matches_per_item.sort(key=lambda x: x[1])
-        best_matches = [item for item, score in matches_per_item[:5]]  # Limit to top 5 matches
+            serialized = ClothingSerializer(best_matches, many=True)
+            return Response(serialized.data, status=200)
 
-        # Serialize and return the best matches
-        serialized = ClothingSerializer(best_matches, many=True)
-        return Response(serialized.data, status=200)
-
+        except Exception as e:
+            return Response({'error': str(e)}, status=500)
+        
+class ClothingDetailView(RetrieveAPIView):
+    queryset = Clothing.objects.all()
+    serializer_class = ClothingSerializer
 
 
 # Register view with password hashing

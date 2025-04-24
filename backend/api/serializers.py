@@ -9,10 +9,10 @@ class ClothingSerializer(serializers.ModelSerializer):
         model = Clothing
         fields = '__all__'  
         #field sthat are not images should be marked as optional, to allow for user image upload
-        extra_kwargs = {
-            'name': {'required': False},
-            'category': {'required': False},
-            'description': {'required': False},
-            'size': {'required': False},
-            'price': {'required': False},
-        }
+        # extra_kwargs = {
+        #     'name': {'required': False},
+        #     'category': {'required': False},
+        #     'description': {'required': False},
+        #     'size': {'required': False},
+        #     'price': {'required': False},
+        # }

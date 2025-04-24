@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import RegisterUser, login_user, ClothingListView, ClothingSearchView
+from .views import RegisterUser, login_user, ClothingListView, ClothingSearchView, ClothingDetailView
 from django.conf import settings
 from django.conf.urls.static import static
 
@@ -8,6 +8,8 @@ urlpatterns = [
     path('login/', login_user, name='login'),
     path('clothing/', ClothingListView.as_view(), name='clothing-list'),  
     path('search-clothing/', ClothingSearchView.as_view(), name='search-clothing'),
+    path('clothing/<int:pk>/', ClothingDetailView.as_view(), name='clothing-detail'),
+
 
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 

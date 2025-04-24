@@ -23,7 +23,8 @@ class Clothing(models.Model):
     size = models.CharField(max_length=50, null=True, blank=True)
     price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     image = models.ImageField(upload_to='clothing_images/', blank=True, null=True)
-    keypoint_value = models.BinaryField(null=True, blank=True)
+    keypoint_value = models.BinaryField(null=True, blank=True),
+    url = models.URLField(max_length=255, blank=True, null=True)
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
