@@ -6,7 +6,7 @@ import io
 
 
 # Method to pick out ORB keypoints (DRY)
-def orb_keypoint_detection(image_input, is_base64=False):
+def orb_keypoint_detection(image_input):
     try:
         # Read image from file-like object (InMemoryUploadedFile)
         image_bytes = image_input.read()

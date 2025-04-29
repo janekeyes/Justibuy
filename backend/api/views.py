@@ -75,14 +75,14 @@ class ClothingSearchView(APIView):
 
         try:
             # Save the uploaded image to a temporary file
-            import tempfile
-            with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as tmp:
-                for chunk in user_image.chunks():
-                    tmp.write(chunk)
-                temp_path = tmp.name
+            # import tempfile
+            # with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as tmp:
+            #     for chunk in user_image.chunks():
+            #         tmp.write(chunk)
+            #     temp_path = tmp.name
 
-            # Extract descriptors
-            _, user_descriptors = orb_keypoint_detection(temp_path)
+            #extract descriptors from user upload
+            _, user_descriptors = orb_keypoint_detection(user_image)
             if user_descriptors is None:
                 return Response({'error': 'Could not extract features from image'}, status=400)
 
@@ -94,21 +94,27 @@ class ClothingSearchView(APIView):
                     db_descriptors = np.frombuffer(item.keypoint_value, dtype=np.uint8)
                     db_descriptors = db_descriptors.reshape(-1, 32)
 
-                    # #Debug: print the descriptor lengths
+                    #debuggin print the descriptor lengths
                     # logger.info(f"Comparing with item ID {item.id}")
                     # logger.info(f"User descriptors length: {len(user_descriptors)}")
                     # logger.info(f"Database descriptors length: {len(db_descriptors)}")
 
                     matches = bf.match(user_descriptors, db_descriptors)
                     if matches:
-                        score = sum([m.distance for m in matches]) / len(matches)
-                        matches_per_item.append((item, score))
+                        #get the average distance between matches
+                        #the lower the distnace, the better the match
+                        average_distnace = sum(m.disstance for m in matches) / len(matches)
+                        # score = sum([m.distance for m in matches]) / len(matches)
+                        matches_per_item.append((item, average_distnace))
                 except Exception as e:
                     print(f"Matching error for item {item.id}: {e}")
                     continue
 
             matches_per_item.sort(key=lambda x: x[1])
             best_matches = [item for item, score in matches_per_item[:5]]
+
+            if not best_matches:
+                return Response({'message':'No matches were found, try a different item'}, status=200)
 
             serialized = ClothingSerializer(best_matches, many=True)
             return Response(serialized.data, status=200)
@@ -174,38 +180,46 @@ def login_user(request):
         return JsonResponse({'error': 'User not found'}, status=400)
 
 class ClothingListView(APIView):
-    #declare parsers to allow file uploads
+    # declare parsers to allow file uploads
     parser_classes = [MultiPartParser, FormParser]
+
+    # list all clothing items
     def get(self, request):
-        clothing_items = Clothing.objects.all()
-        serializer = ClothingSerializer(clothing_items, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        try:
+            clothing_items = Clothing.objects.all()
+            serializer = ClothingSerializer(clothing_items, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"error": f"Failed to fetch clothing items: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def post(self, request):
-        #retrives the image from the frontend request
+        # retrieves the image from the frontend request
         image_file = request.FILES.get('image')
         if not image_file:
-            return Response ({"error" : "Image is required"}, status=status.HTTP_400_BAD_REQUEST)
-        
-        try:
-            serializer = ClothingSerializer(data=request.data)
-            if serializer.is_valid():
-                #return the clothin item as an object
-                clothing_item = serializer.save()
-                #process the keypoints
-                try:
-                    #method from utils
-                    keypoints, descriptors = orb_keypoint_detection(clothing_item.image.path, is_base64=False)
-                    if descriptors is not None:
-                        #save the keypoint descriptors in the Clothing model
-                        clothing_item.keypoint_value = descriptors.tobytes()
-                        clothing_item.save(update_fields=['keypoint_value'])
+            return Response({"error": "Image is required"}, status=status.HTTP_400_BAD_REQUEST)
 
-                except Exception as e:
-                    return Response({"error": f"Error processing image: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-                return Response(serializer.data, status=status.HTTP_201_CREATED)
+        serializer = ClothingSerializer(data=request.data)
+        if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as e:
-                    return Response({"error": f"Error saving image: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+        try:
+            # return the clothing item as an object
+            clothing_item = serializer.save()
+            # process the keypoints
+            try:
+                # method from utils
+                keypoints, descriptors = orb_keypoint_detection(clothing_item.image.path, is_base64=False)
+                if descriptors is not None:
+                    # save the keypoint descriptors in the Clothing model
+                    clothing_item.keypoint_value = descriptors.tobytes()
+                    clothing_item.save(update_fields=['keypoint_value'])
+                else:
+                    return Response({"warning": "Image uploaded, but no features were detected."}, status=status.HTTP_201_CREATED)  # no descriptors found
+                return Response(ClothingSerializer(clothing_item).data, status=status.HTTP_201_CREATED)
 
+            except Exception as img_process_error:
+                clothing_item.delete()  # Rollback: delete the saved item if image processing failed
+                return Response({"error": f"Error processing image: {str(img_process_error)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        except Exception as save_error:
+            return Response({"error": f"Error saving clothing item: {str(save_error)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
