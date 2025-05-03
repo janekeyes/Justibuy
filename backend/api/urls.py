@@ -10,7 +10,6 @@ urlpatterns = [
     path('search-clothing/', ClothingSearchView.as_view(), name='search-clothing'),
     path('clothing/<int:pk>/', ClothingDetailView.as_view(), name='clothing-detail'),
     path('user/<int:user_id>/', get_user_by_id),
-    #WIHLIST ENDPPOINTS
     path('wishlist/<int:item_id>/status/', check_wishlist_status),
     path('wishlist/add/', add_to_wishlist),
     path('wishlist/remove/', remove_from_wishlist),
