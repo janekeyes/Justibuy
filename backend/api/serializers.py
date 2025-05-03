@@ -1,5 +1,7 @@
 from rest_framework import serializers
 from .models import Clothing
+from .models import Wishlist
+
 
 class ClothingSerializer(serializers.ModelSerializer):
     #image field should return absolute urls
@@ -16,3 +18,8 @@ class ClothingSerializer(serializers.ModelSerializer):
         #     'size': {'required': False},
         #     'price': {'required': False},
         # }
+        
+class WishlistSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Wishlist
+        fields = '__all__'

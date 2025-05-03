@@ -3,7 +3,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.hashers import make_password, check_password
 from django.core.files.uploadedfile import InMemoryUploadedFile
 import json
-from .models import UserProfile, Clothing
+from .models import UserProfile, Clothing, Wishlist
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -16,7 +16,6 @@ from rest_framework.generics import RetrieveAPIView
 import numpy as np
 import cv2
 import tempfile
-import pickle
 # import logging
 
 # @api_view(['POST'])
@@ -224,3 +223,46 @@ class ClothingListView(APIView):
 
         except Exception as save_error:
             return Response({"error": f"Error saving clothing item: {str(save_error)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+#WISHLIST VIEWS
+@api_view(['GET'])
+def check_wishlist_status(request, item_id):
+    user_id = request.GET.get('user_id')
+    if not user_id:
+        return Response({'error': 'Missing user_id'}, status=400)
+
+    is_favourited = Wishlist.objects.filter(user_id=user_id, item_id=item_id).exists()
+    return Response({'is_favourited': is_favourited})
+
+
+@api_view(['POST'])
+def add_to_wishlist(request):
+    user_id = request.data.get('user_id')
+    item_id = request.data.get('item_id')
+    if not (user_id and item_id):
+        return Response({'error': 'Missing user_id or item_id'}, status=400)
+
+    Wishlist.objects.get_or_create(user_id=user_id, item_id=item_id)
+    return Response({'status': 'added'})
+
+
+@api_view(['POST'])
+def remove_from_wishlist(request):
+    user_id = request.data.get('user_id')
+    item_id = request.data.get('item_id')
+    if not (user_id and item_id):
+        return Response({'error': 'Missing user_id or item_id'}, status=400)
+
+    Wishlist.objects.filter(user_id=user_id, item_id=item_id).delete()
+    return Response({'status': 'removed'})
+
+
+@api_view(['GET'])
+def get_user_wishlist(request):
+    user_id = request.GET.get('user_id')
+    if not user_id:
+        return Response({'error': 'Missing user_id'}, status=400)
+
+    items = Clothing.objects.filter(wishlist__user_id=user_id)
+    serializer = ClothingSerializer(items, many=True)
+    return Response(serializer.data)

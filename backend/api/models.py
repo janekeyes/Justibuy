@@ -14,7 +14,16 @@ class UserProfile(models.Model):
     def __str__(self):
         return self.username
 
+#wishlist model
+class Wishlist(models.Model):
+    user = models.ForeignKey('UserProfile', on_delete=models.CASCADE)
+    item = models.ForeignKey('Clothing', on_delete=models.CASCADE)
 
+    class Meta:
+        unique_together = ('user', 'item')  # Prevent duplicates
+
+    def __str__(self):
+        return f"{self.user.username} - {self.item.name}"
 
 # class Clothing(models.Model):
 #     name = models.CharField(max_length=255, null=True, blank=True)
