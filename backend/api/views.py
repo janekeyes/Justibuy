@@ -266,3 +266,16 @@ def get_user_wishlist(request):
     items = Clothing.objects.filter(wishlist__user_id=user_id)
     serializer = ClothingSerializer(items, many=True)
     return Response(serializer.data)
+
+#GET USER DETAILS FOR PROFILE PERSONALISATION
+@api_view(['GET'])
+def get_user_by_id(request, user_id):
+    try:
+        user = UserProfile.objects.get(pk=user_id)
+        return Response({
+            'id': user.id,
+            'username': user.username,
+            'email': user.email,
+        })
+    except UserProfile.DoesNotExist:
+        return Response({'error': 'User not found'}, status=404)
