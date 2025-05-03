@@ -173,7 +173,7 @@ def login_user(request):
         if user:
             # Check if the password matches the hashed password stored in the database
             if check_password(password, user.password):
-                return JsonResponse({'message': 'Login successful', 'username': user.username})
+                return JsonResponse({'message': 'Login successful', 'user': {'id': user.id, 'username': user.username }})
             else:
                 return JsonResponse({'error': 'Invalid credentials'}, status=400)
         
