@@ -151,7 +151,7 @@ def RegisterUser(request):
             user = UserProfile(username=username, email=email, password=hashed_password)
             user.save()
 
-            return JsonResponse({'message': 'User registered successfully'}, status=201)
+            return JsonResponse({'message': 'User registered successfully', 'user': { 'id': user.id, 'username': user.username}}, status=201)
         except json.JSONDecodeError:
             return JsonResponse({'error': 'Invalid JSON data'}, status=400)
     else:
