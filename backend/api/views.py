@@ -8,7 +8,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from .serializers import ClothingSerializer
-from .utils import orb_keypoint_detection
+from .utils import orb_keypoint_detection, descriptors_from_bytes
 from rest_framework.decorators import api_view
 from rest_framework import status
 from rest_framework.parsers import MultiPartParser, FormParser
@@ -74,13 +74,13 @@ class ClothingSearchView(APIView):
             return Response({'error': 'No valid image provided'}, status=400)
 
         try:
-            # Save the uploaded image to a temporary file
+            #save the uploaded image to a temporary file
             with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as tmp:
                 for chunk in user_image.chunks():
                     tmp.write(chunk)
                 temp_path = tmp.name
 
-            # Extract descriptors from user upload
+            #extract descriptors from user upload
             _, user_descriptors = orb_keypoint_detection(temp_path)
             if user_descriptors is None:
                 return Response({'error': 'Could not extract features from image'}, status=400)
@@ -90,8 +90,7 @@ class ClothingSearchView(APIView):
 
             for item in Clothing.objects.exclude(keypoint_value=None):
                 try:
-                    db_descriptors = np.frombuffer(item.keypoint_value, dtype=np.uint8)
-                    db_descriptors = db_descriptors.reshape(-1, 32)
+                    db_descriptors = descriptors_from_bytes(item.keypoint_value)
 
                     # Debugging: Print the descriptor lengths
                     # logger.info(f"Comparing with item ID {item.id}")
@@ -103,24 +102,39 @@ class ClothingSearchView(APIView):
                         # Get the average distance between matches
                         # The lower the distance, the better the match
                         average_distance = sum(m.distance for m in matches) / len(matches)
-                        matches_per_item.append((item, average_distance))
+                        #filter out all the bad matches
+                        if average_distance < 70:
+                            matches_per_item.append((item, average_distance))
                 except Exception as e:
                     print(f"Matching error for item {item.id}: {e}")
                     continue
 
-            # Sort by average distance (lower distance = better match)
-            matches_per_item.sort(key=lambda x: x[1])
-            best_matches = [item for item, score in matches_per_item[:5]]
+                if not matches_per_item:
+                    return Response({'message': 'Could not find a match. Please try another image.'}, status=200)
 
-            if not best_matches:
-                return Response({'message': 'No matches were found, try a different item'}, status=200)
+            #sort by similarity and lowest price
+            matches_per_item.sort(key=lambda x: (x[1], x[0].price or 0))
+            best_matches = matches_per_item[:5]
 
-            # Serialize and return the best matches
-            serialized = ClothingSerializer(best_matches, many=True)
-            return Response(serialized.data, status=200)
+            matched_data = []
+            for item, score in best_matches:
+                item_data = ClothingSerializer(item).data
+                #item_data['match_score'] = round(score, 2)
+                #return item similarity as a percentage for user
+                similarity = max(0, 100 - score)
+                item_data['visual_similarity'] = f"{round(similarity)}%"
+                #calculate the number of matches
+                db_descriptors = descriptors_from_bytes(item.keypoint_value)
+                matches = bf.match(user_descriptors, db_descriptors)
+                item_data['match_count'] = len(matches)
+                matched_data.append(item_data)
+
+
+            return Response(matched_data, status=200)
 
         except Exception as e:
-            return Response({'error': str(e)}, status=500)
+            return Response({'error': f'Image search failed: {str(e)}'}, status=500)
+
         
 class ClothingDetailView(RetrieveAPIView):
     queryset = Clothing.objects.all()

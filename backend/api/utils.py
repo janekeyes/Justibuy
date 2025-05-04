@@ -71,5 +71,8 @@ def compare_keypoints(descriptors_query, clothing_queryset):
             except Exception as e:
                 print(f"Error. Could not match {clothing.id}: {e}")
 
-    # Return the best results first
+    #return the best results first
     return sorted(results, key=lambda x: x['average_distance'])
+
+def descriptors_from_bytes(byte_data):
+    return np.frombuffer(byte_data, dtype=np.uint8).reshape(-1, 32)
