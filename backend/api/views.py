@@ -8,7 +8,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from .serializers import ClothingSerializer
-from .utils import orb_keypoint_detection, descriptors_from_bytes
+from .utils import orb_keypoint_detection, descriptors_from_bytes, get_good_matches, top_matches
 from rest_framework.decorators import api_view
 from rest_framework import status
 from rest_framework.parsers import MultiPartParser, FormParser
@@ -18,52 +18,8 @@ import cv2
 import tempfile
 # import logging
 
-# @api_view(['POST'])
-# def user_image_process(request):
-#     try:
-#         # gets the user uploaded image 
-#         user_image_data = request.data.get('image')
-#         if not user_image_data:
-#             return Response({'error': 'Could not find image'}, status=400)
-        
-#         #save file temporarily for open cv
-#         temporary_path = user_image_data.temporary_file_path() if hasattr(user_image_data, 'temporary_file_path') else None
-#         if not temporary_path:
-#             #save the temporary file manually 
-#             import tempfile
-#             with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as tmp:
-#                 for chunk in user_image_data.chunks():
-#                     tmp.write(chunk)
-#                 temporary_path = tmp.name
-        
-#         #call method from utils
-#         keypoints, descriptors = orb_keypoint_detection(temporary_path)
 
-#         #find and compare with existing clothing items in the database
-#         database_items = Clothing.objects.exclude(keypoint_value=None)
-#         results = compare_keypoints(descriptors, database_items)
-
-#         #return best match
-#         if results:
-#             best_match = results[0]
-#             return Response({
-#                 'match': best_match['clothing'].id,
-#                 'name': best_match['clothing'].name,
-#                 'avg_distance': best_match['average_distance'],
-#                 'num_matches': best_match['number_of_matches'],
-#             })
-#         else:
-#             return Response({'message': 'could not find a match'}, status=404)
-
-#         #return the number of keypoints detected
-#         # return Response({
-#         #     'keypoints_detected': len(keypoints)
-
-#         # })
-#     except Exception as e:
-#         return Response({'error': str(e)}, status=500)
-
-# logger = logging.getLogger(__name__)    
+#IMAGE SEARCH VIEW
 class ClothingSearchView(APIView):
     parser_classes = [MultiPartParser, FormParser]
 
@@ -86,54 +42,36 @@ class ClothingSearchView(APIView):
                 return Response({'error': 'Could not extract features from image'}, status=400)
 
             bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
-            matches_per_item = []
+            clothing_query = Clothing.objects.exclude(keypoint_value=None)
 
-            for item in Clothing.objects.exclude(keypoint_value=None):
-                try:
-                    db_descriptors = descriptors_from_bytes(item.keypoint_value)
+            matches_per_item = get_good_matches(user_descriptors, clothing_query, bf)
+            if not matches_per_item:
+                return Response({'message': 'Could not find a match. Please try another image.'}, status=200)
 
-                    # Debugging: Print the descriptor lengths
-                    # logger.info(f"Comparing with item ID {item.id}")
-                    # logger.info(f"User descriptors length: {len(user_descriptors)}")
-                    # logger.info(f"Database descriptors length: {len(db_descriptors)}")
-
-                    matches = bf.match(user_descriptors, db_descriptors)
-                    if matches:
-                        # Get the average distance between matches
-                        # The lower the distance, the better the match
-                        average_distance = sum(m.distance for m in matches) / len(matches)
-                        #filter out all the bad matches
-                        if average_distance < 70:
-                            matches_per_item.append((item, average_distance))
-                except Exception as e:
-                    print(f"Matching error for item {item.id}: {e}")
-                    continue
-
-                if not matches_per_item:
-                    return Response({'message': 'Could not find a match. Please try another image.'}, status=200)
-
-            #sort by similarity and lowest price
-            matches_per_item.sort(key=lambda x: (x[1], x[0].price or 0))
-            best_matches = matches_per_item[:5]
-
-            matched_data = []
-            for item, score in best_matches:
-                item_data = ClothingSerializer(item).data
-                #item_data['match_score'] = round(score, 2)
-                #return item similarity as a percentage for user
-                similarity = max(0, 100 - score)
-                item_data['visual_similarity'] = f"{round(similarity)}%"
-                #calculate the number of matches
-                db_descriptors = descriptors_from_bytes(item.keypoint_value)
-                matches = bf.match(user_descriptors, db_descriptors)
-                item_data['match_count'] = len(matches)
-                matched_data.append(item_data)
-
+            best_matches = top_matches(matches_per_item)
+            matched_data = return_matches(best_matches, user_descriptors, bf)
 
             return Response(matched_data, status=200)
-
         except Exception as e:
             return Response({'error': f'Image search failed: {str(e)}'}, status=500)
+
+#METHOD:seralize the matched data to be returned to the UI
+#could not stay in utils as it caused a circular import error
+def return_matches(best_matches, user_descriptors, bf):
+    matched_data = []
+
+    for item, score in best_matches:
+        item_data = ClothingSerializer(item).data
+        #item_data['match_score'] = round(score, 2)
+        #return item similarity as a percentage for user
+        similarity = max(0, 100 - score)
+        item_data['visual_similarity'] = f"{round(similarity)}%"
+        #calculate the number of matches
+        db_descriptors = descriptors_from_bytes(item.keypoint_value)
+        matches = bf.match(user_descriptors, db_descriptors)
+        item_data['match_count'] = len(matches)
+        matched_data.append(item_data)
+    return matched_data
 
         
 class ClothingDetailView(RetrieveAPIView):
@@ -171,13 +109,14 @@ def RegisterUser(request):
     else:
         return JsonResponse({'error': 'Invalid request method'}, status=405)  # Handle GET requests
 
-# Login view with password checking
+#LOGIN VIEW
 @csrf_exempt
 def login_user(request):
     if request.method == 'POST':
         data = json.loads(request.body)
         username = data.get('username')
-        email = data.get('email', '').strip().lower()  # Convert email to lowercase
+        #convert the email to lowercase
+        email = data.get('email', '').strip().lower()
         password = data['password']
 
         # Find user by username or email
@@ -193,6 +132,7 @@ def login_user(request):
         
         return JsonResponse({'error': 'User not found'}, status=400)
 
+#CLOTHING LIST VIEW
 class ClothingListView(APIView):
     # declare parsers to allow file uploads
     parser_classes = [MultiPartParser, FormParser]
