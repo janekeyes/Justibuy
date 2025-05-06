@@ -169,7 +169,7 @@ class ClothingListView(APIView):
             return Response({"error": f"Failed to fetch clothing items: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def post(self, request):
-        # retrieves the image from the frontend request
+        #retrieves the image from the frontend request
         image_file = request.FILES.get('image')
         if not image_file:
             return Response({"error": "Image is required"}, status=status.HTTP_400_BAD_REQUEST)
@@ -179,14 +179,14 @@ class ClothingListView(APIView):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            # return the clothing item as an object
+            #return the clothing item as an object
             clothing_item = serializer.save()
-            # process the keypoints
+            #process the keypoints
             try:
-                # method from utils
-                keypoints, descriptors = orb_keypoint_detection(clothing_item.image.path, is_base64=False)
+                #method from utils
+                keypoints, descriptors = orb_keypoint_detection(clothing_item.image.path)
                 if descriptors is not None:
-                    # save the keypoint descriptors in the Clothing model
+                    #save the keypoint descriptors in the Clothing model
                     clothing_item.keypoint_value = descriptors.tobytes()
                     clothing_item.save(update_fields=['keypoint_value'])
                 else:
