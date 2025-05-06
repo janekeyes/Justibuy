@@ -2,6 +2,7 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.hashers import make_password, check_password
 from django.core.files.uploadedfile import InMemoryUploadedFile
+from django.db.models import Q
 import json
 from .models import UserProfile, Clothing, Wishlist
 from rest_framework.views import APIView
@@ -16,6 +17,7 @@ from rest_framework.generics import RetrieveAPIView
 import numpy as np
 import cv2
 import tempfile
+
 # import logging
 
 
@@ -72,6 +74,26 @@ def return_matches(best_matches, user_descriptors, bf):
         item_data['match_count'] = len(matches)
         matched_data.append(item_data)
     return matched_data
+
+
+#SEARCH BY KEYWORD VIEW
+#https://docs.djangoproject.com/en/5.2/topics/db/queries/
+@api_view(['GET'])
+def keyword_search(request):
+    keyword = request.GET.get('q', '').strip()
+
+    if not keyword:
+        return Response({'error': 'PLease enter a valid serach term.'}, status=400)
+    try:
+        #filtering on name cateorgy and price fields as string (case sensitive)
+        items = Clothing.objects.filter(Q(name__icontains=keyword) | Q(category__icontains=keyword) | Q(category__icontains=keyword)).order_by('price')
+        if not items.exists():
+            return Response({'message': 'Your search has no matches. PLease try another term'}, status=200)
+        serializer = ClothingSerializer(items, many=True)
+        return Response(serializer.data, status=200)
+    
+    except Exception as e:
+        return Response({'error': f'Keyword search failed: {str(e)}'}, status=500)
 
         
 class ClothingDetailView(RetrieveAPIView):
