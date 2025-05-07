@@ -12,7 +12,7 @@ def orb_keypoint_detection(image_path):
     if image is None:
         raise ValueError("Failed to load image for ORB detection.")
 
-    orb = cv2.ORB_create()
+    orb = cv2.ORB_create(nfeatures=1000)
     keypoints, descriptors = orb.detectAndCompute(image, None)
 
     if descriptors is None:
