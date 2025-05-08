@@ -1,8 +1,14 @@
+# this file is responsible for mapping url endpoints to their 
+# view logic, routing frontend and API traffic apprropriatley 
+# based on their request path
+
 from django.urls import path
 from .views import RegisterUser, login_user, ClothingListView, ClothingSearchView, ClothingDetailView, keyword_search, check_wishlist_status, add_to_wishlist, remove_from_wishlist, get_user_wishlist, get_user_by_id
 from django.conf import settings
 from django.conf.urls.static import static
 
+
+#create the paths for all user requests
 urlpatterns = [
     path('register/', RegisterUser, name='register'),
     path('login/', login_user, name='login'),
@@ -15,6 +21,9 @@ urlpatterns = [
     path('wishlist/add/', add_to_wishlist),
     path('wishlist/remove/', remove_from_wishlist),
     path('wishlist/', get_user_wishlist),
+] 
+#make uploaded images viewable by serving imaes from the root at the url
++ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)  
 
-] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+ 
 

@@ -1,25 +1,23 @@
 from rest_framework import serializers
-from .models import Clothing
-from .models import Wishlist
+from .models import Clothing, Wishlist
 
 
+#data need to be converted to JSON and back to be used for API requests/responses
+
+#SERIALIZE CLOTHING DATA
 class ClothingSerializer(serializers.ModelSerializer):
-    #image field should return absolute urls
+    #return the full url for the image to ensure the image can be seen on the frontend
     image = serializers.ImageField(use_url=True)
 
     class Meta:
+        #use the clothing model and all of its fields
         model = Clothing
         fields = '__all__'  
-        #field sthat are not images should be marked as optional, to allow for user image upload
-        # extra_kwargs = {
-        #     'name': {'required': False},
-        #     'category': {'required': False},
-        #     'description': {'required': False},
-        #     'size': {'required': False},
-        #     'price': {'required': False},
-        # }
         
+#SERIALIZE WISHLIST DATA        
 class WishlistSerializer(serializers.ModelSerializer):
+    
     class Meta:
+        #use the wishlist model and all of its fields
         model = Wishlist
         fields = '__all__'
