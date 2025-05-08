@@ -8,15 +8,15 @@ from api.models import Clothing
 from django.core.files import File
 import os
 
-image_path = 'C:/Users/janek/OneDrive - National College of Ireland/Desktop/sequintop.jpg'
+image_path = 'C:/Users/janek/Downloads/R.png'
 
 with open(image_path, 'rb') as image_file:
     clothing_item = Clothing.objects.create(
-        name='ZARA sequin knit top',
-        category='Top',
-        price=9.99,
+        name='ROCK VINTAGE BLACK T SHIRT IRON MAIDEN EDDIE BASS',
+        category='Skirt',
+        price=24.00,
         image=File(image_file, name=os.path.basename(image_path)),
-        url='https://www.zara.com/ie/en/sequinned-knit-peplum-top-p02142033.html?v1=423802578'
+        url='https://www.magic-custom.com/en/iron-maiden/5408-vintage-rock-black-t-shirt-iron-maiden-eddie-bass.html'
     )
 
 # Optional: view all items

@@ -1,8 +1,59 @@
+#------REFERENCES-------
+# https://docs.opencv.org/3.4/d1/d89/tutorial_py_orb.html
+# https://www.geeksforgeeks.org/feature-matching-using-orb-algorithm-in-python-opencv/
+# https://docs.opencv.org/4.x/dc/dc3/tutorial_py_matcher.html
+# https://www.geeksforgeeks.org/python-opencv-bfmatcher-function/
+# https://stackoverflow.com/questions/20145842/python-sorting-by-multiple-criteria
+
+
 # This class contains methods used by other files in this directory
 import cv2
 import numpy as np
 from PIL import Image
 import io
+
+def user_credentials(data, required_fields):
+    error = {}
+    for field in required_fields:
+        if not data.get(field):
+            error[field] = f'{field} is a required field'
+    return error
+
+
+#Method to pre process the image
+def preprocess(image_path, target_size):
+    #ref: https://www.geeksforgeeks.org/load-images-in-tensorflow-python/
+    image = cv2.imread(image_path)
+    if image is None:
+        raise ValueError("Image could not be loaded.")
+
+    # 1. Resize while keeping aspect ratio
+    # ref: https://pytutorial.com/python-resize-image-while-keeping-aspect-ratio/
+    # ref: https://codoraven.com/tutorials/opencv-vs-pillow/resize-image-keep-aspect-ratio/
+    height, width = image.shape[:2]
+    scope = target_size / max(height, width)
+    width_new = int(width * scope)
+    height_new = int(height * scope) 
+    resized = cv2.resize(image, (width_new , height_new), interpolation=cv2.INTER_AREA)
+    #determine how much padding is needed to reach a square shape
+    width_padding= target_size - width_new
+    height_padding = target_size - height_new
+    #calculate each sides padding
+    top, bottom = height_padding // 2,
+    height_padding - (height_padding // 2)
+    left, right = width_padding // 2, 
+    width_padding - (width_padding // 2)
+    #add the padding using opencv
+    # ref: https://docs.opencv.org/4.x/dc/da3/tutorial_copyMakeBorder.html
+    square_image = cv2.copyMakeBorder(resized, top, bottom, left, right, cv2.BORDER_CONSTANT, value=[0, 0, 0])
+    gray = cv2.cvtColor(square_image, cv2.COLOR_BGR2GRAY)
+
+    #higher the image contrast for better feature keypoint feature detection
+    # ref: https://www.geeksforgeeks.org/clahe-histogram-eqalization-opencv/
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))#default size
+    processed = clahe.apply(gray)
+
+    return processed
 
 
 #mthod to pick out ORB keypoints 
@@ -97,21 +148,3 @@ def get_good_matches(user_descriptors, clothing_query, bf, threshold=70):
 def top_matches(item_matches, k=5):
     sorted_matches = sorted(item_matches, key=lambda x: (x[1], x[0].price or 0))
     return sorted_matches[:k]
-
-# #serialize the matched data to be returned to the UI
-# def return_matches(best_matches, user_descriptors, bf):
-#     matched_data = []
-
-#     for item, score in best_matches:
-#         item_data = ClothingSerializer(item).data
-#         #item_data['match_score'] = round(score, 2)
-#         #return item similarity as a percentage for user
-#         similarity = max(0, 100 - score)
-#         item_data['visual_similarity'] = f"{round(similarity)}%"
-#         #calculate the number of matches
-#         db_descriptors = descriptors_from_bytes(item.keypoint_value)
-#         matches = bf.match(user_descriptors, db_descriptors)
-#         item_data['match_count'] = len(matches)
-#         matched_data.append(item_data)
-#     return matched_data
-

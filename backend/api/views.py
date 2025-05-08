@@ -1,3 +1,15 @@
+#------REFERENCES-------
+# https://docs.python.org/3/library/tempfile.html
+# https://docs.djangoproject.com/en/5.2/topics/db/models/
+# https://docs.djangoproject.com/en/5.2/topics/db/queries/
+# https://docs.djangoproject.com/en/5.2/topics/http/views/#handling-errors
+# https://docs.djangoproject.com/en/5.2/ref/request-response/#jsonresponse-objects
+# https://docs.djangoproject.com/en/5.2/topics/auth/passwords/#using-the-password-hashers
+# https://docs.djangoproject.com/en/5.2/topics/http/file-uploads/
+# https://www.django-rest-framework.org/api-guide/serializers/
+# https://www.django-rest-framework.org/api-guide/responses/#response-objects
+# https://www.django-rest-framework.org/api-guide/parsers/#multipartparser
+
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.hashers import make_password, check_password
@@ -9,7 +21,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from .serializers import ClothingSerializer
-from .utils import orb_keypoint_detection, descriptors_from_bytes, get_good_matches, top_matches
+from .utils import user_credentials, orb_keypoint_detection, descriptors_from_bytes, get_good_matches, top_matches
 from rest_framework.decorators import api_view
 from rest_framework import status
 from rest_framework.parsers import MultiPartParser, FormParser
@@ -17,9 +29,6 @@ from rest_framework.generics import RetrieveAPIView
 import numpy as np
 import cv2
 import tempfile
-
-# import logging
-
 
 #IMAGE SEARCH VIEW
 class ClothingSearchView(APIView):
@@ -107,12 +116,16 @@ def RegisterUser(request):
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
-            username = data.get('username', '').strip()
-            email = data.get('email', '').strip().lower()
-            password = data.get('password', '')
+            required_fields = ['username', 'email', 'password']
+            
+            # Validate the fields
+            errors = user_credentials(data, required_fields)
+            if errors:
+                return JsonResponse({'error': errors}, status=400)
 
-            if not username or not email or not password:
-                return JsonResponse({'error': 'All fields are required'}, status=400)
+            username = data['username'].strip()
+            email = data['email'].strip().lower()
+            password = data['password']
 
             # Check if username or email already exists
             if UserProfile.objects.filter(username=username).exists():
@@ -120,38 +133,41 @@ def RegisterUser(request):
             if UserProfile.objects.filter(email=email).exists():
                 return JsonResponse({'error': 'Email already exists'}, status=400)
 
-            # Hash password and create user
             hashed_password = make_password(password)
             user = UserProfile(username=username, email=email, password=hashed_password)
             user.save()
 
-            return JsonResponse({'message': 'User registered successfully', 'user': { 'id': user.id, 'username': user.username}}, status=201)
+            return JsonResponse({'message': 'User registered successfully', 'user': {'id': user.id, 'username': user.username}}, status=201)
         except json.JSONDecodeError:
             return JsonResponse({'error': 'Invalid JSON data'}, status=400)
     else:
-        return JsonResponse({'error': 'Invalid request method'}, status=405)  # Handle GET requests
+        return JsonResponse({'error': 'Invalid request method'}, status=405)
 
 #LOGIN VIEW
 @csrf_exempt
 def login_user(request):
     if request.method == 'POST':
         data = json.loads(request.body)
-        username = data.get('username')
-        #convert the email to lowercase
-        email = data.get('email', '').strip().lower()
+        required_fields = ['username', 'password']
+        
+        # Validate the fields
+        errors = user_credentials(data, required_fields)
+        if errors:
+            return JsonResponse({'error': errors}, status=400)
+
+        username = data['username']
+        email = data.get('email', '').strip().lower()  # Email is optional here
         password = data['password']
 
-        # Find user by username or email
         user = UserProfile.objects.filter(username=username).first() or \
                UserProfile.objects.filter(email=email).first()
 
         if user:
-            # Check if the password matches the hashed password stored in the database
             if check_password(password, user.password):
-                return JsonResponse({'message': 'Login successful', 'user': {'id': user.id, 'username': user.username }})
+                return JsonResponse({'message': 'Login successful', 'user': {'id': user.id, 'username': user.username}})
             else:
                 return JsonResponse({'error': 'Invalid credentials'}, status=400)
-        
+
         return JsonResponse({'error': 'User not found'}, status=400)
 
 #CLOTHING LIST VIEW

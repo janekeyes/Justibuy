@@ -21,9 +21,6 @@ urlpatterns = [
     path('wishlist/add/', add_to_wishlist),
     path('wishlist/remove/', remove_from_wishlist),
     path('wishlist/', get_user_wishlist),
-] 
-#make uploaded images viewable by serving imaes from the root at the url
-+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)  
 
- 
+] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
