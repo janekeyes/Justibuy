@@ -21,7 +21,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from .serializers import ClothingSerializer
-from .utils import user_credentials, orb_keypoint_detection, descriptors_from_bytes, get_good_matches, top_matches
+from .utils import user_credentials, orb_keypoint_detection, descriptors_from_bytes, get_good_matches, top_matches, resize_saved_image
 from rest_framework.decorators import api_view
 from rest_framework import status
 from rest_framework.parsers import MultiPartParser, FormParser
@@ -156,7 +156,8 @@ def login_user(request):
             return JsonResponse({'error': errors}, status=400)
 
         username = data['username']
-        email = data.get('email', '').strip().lower()  # Email is optional here
+        #make email an optional login input
+        email = data.get('email', '').strip().lower() 
         password = data['password']
 
         user = UserProfile.objects.filter(username=username).first() or \
@@ -199,6 +200,7 @@ class ClothingListView(APIView):
             clothing_item = serializer.save()
             #process the keypoints
             try:
+                resize_saved_image(clothing_item.image.path, output_size=(300, 300))
                 #method from utils
                 keypoints, descriptors = orb_keypoint_detection(clothing_item.image.path)
                 if descriptors is not None:
@@ -271,3 +273,5 @@ def get_user_by_id(request, user_id):
         })
     except UserProfile.DoesNotExist:
         return Response({'error': 'User not found'}, status=404)
+    
+

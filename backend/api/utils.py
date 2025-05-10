@@ -148,3 +148,19 @@ def get_good_matches(user_descriptors, clothing_query, bf, threshold=70):
 def top_matches(item_matches, k=5):
     sorted_matches = sorted(item_matches, key=lambda x: (x[1], x[0].price or 0))
     return sorted_matches[:k]
+
+#resize the image before it is saved to the database
+def resize_saved_image(image_path, output_size=(300, 300)):
+    with Image.open(image_path) as img:
+        img = img.convert("RGB")
+        img.thumbnail(output_size, Image.ANTIALIAS)
+
+        # Create a new square canvas
+        new_img = Image.new("RGB", output_size, (255, 255, 255))
+        paste_position = (
+            (output_size[0] - img.width) // 2,
+            (output_size[1] - img.height) // 2
+        )
+        new_img.paste(img, paste_position)
+
+        new_img.save(image_path)
