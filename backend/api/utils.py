@@ -4,9 +4,14 @@
 # https://docs.opencv.org/4.x/dc/dc3/tutorial_py_matcher.html
 # https://www.geeksforgeeks.org/python-opencv-bfmatcher-function/
 # https://stackoverflow.com/questions/20145842/python-sorting-by-multiple-criteria
+# https://codoraven.com/tutorials/opencv-vs-pillow/resize-image-keep-aspect-ratio/
+# https://www.geeksforgeeks.org/load-images-in-tensorflow-python/
+# https://pytutorial.com/python-resize-image-while-keeping-aspect-ratio/
+# https://docs.opencv.org/4.x/dc/da3/tutorial_copyMakeBorder.html
+# https://www.geeksforgeeks.org/clahe-histogram-eqalization-opencv/
 
 
-# This class contains methods used by other files in this directory
+#this class contains methods used by other files in this directory
 import cv2
 import numpy as np
 from PIL import Image
@@ -22,14 +27,11 @@ def user_credentials(data, required_fields):
 
 #Method to pre process the image
 def preprocess(image_path, target_size):
-    #ref: https://www.geeksforgeeks.org/load-images-in-tensorflow-python/
     image = cv2.imread(image_path)
     if image is None:
         raise ValueError("Image could not be loaded.")
 
-    # 1. Resize while keeping aspect ratio
-    # ref: https://pytutorial.com/python-resize-image-while-keeping-aspect-ratio/
-    # ref: https://codoraven.com/tutorials/opencv-vs-pillow/resize-image-keep-aspect-ratio/
+    #resize while keeping aspect ratio
     height, width = image.shape[:2]
     scope = target_size / max(height, width)
     width_new = int(width * scope)
@@ -44,12 +46,10 @@ def preprocess(image_path, target_size):
     left, right = width_padding // 2, 
     width_padding - (width_padding // 2)
     #add the padding using opencv
-    # ref: https://docs.opencv.org/4.x/dc/da3/tutorial_copyMakeBorder.html
     square_image = cv2.copyMakeBorder(resized, top, bottom, left, right, cv2.BORDER_CONSTANT, value=[0, 0, 0])
     gray = cv2.cvtColor(square_image, cv2.COLOR_BGR2GRAY)
 
     #higher the image contrast for better feature keypoint feature detection
-    # ref: https://www.geeksforgeeks.org/clahe-histogram-eqalization-opencv/
     clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))#default size
     processed = clahe.apply(gray)
 
@@ -71,7 +71,7 @@ def orb_keypoint_detection(image_path):
 
     return keypoints, descriptors
 
-# Method to compare the uploaded user image to database images
+#method to compare the uploaded user image to database images
 def compare_keypoints(descriptors_query, clothing_query):
     bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
     results = []
@@ -79,7 +79,7 @@ def compare_keypoints(descriptors_query, clothing_query):
     for clothing in clothing_query:
         if clothing.keypoint_value:
             try:
-                # Ensure correct shape
+                #ensure correct shape
                 descriptors_db = descriptors_from_bytes(clothing.keypoint_value)
                 matches = bf.match(descriptors_query, descriptors_db)
                 matches = sorted(matches, key=lambda x: x.distance)
@@ -132,8 +132,8 @@ def get_good_matches(user_descriptors, clothing_query, bf, threshold=70):
 
             matches = bf.match(user_descriptors, db_descriptors)
             if matches:
-                # Get the average distance between matches
-                # The lower the distance, the better the match
+                #get the average distance between matches
+                #the lower the distance, the better the match
                 average_distance = sum(m.distance for m in matches) / len(matches)
                 #filter out all the bad matches
                 if average_distance < 70:
@@ -155,7 +155,7 @@ def resize_saved_image(image_path, output_size=(300, 300)):
         img = img.convert("RGB")
         img.thumbnail(output_size, Image.ANTIALIAS)
 
-        # Create a new square canvas
+        #create a new square canvas
         new_img = Image.new("RGB", output_size, (255, 255, 255))
         paste_position = (
             (output_size[0] - img.width) // 2,

@@ -86,13 +86,12 @@ def return_matches(best_matches, user_descriptors, bf):
 
 
 #SEARCH BY KEYWORD VIEW
-#https://docs.djangoproject.com/en/5.2/topics/db/queries/
 @api_view(['GET'])
 def keyword_search(request):
     keyword = request.GET.get('q', '').strip()
 
     if not keyword:
-        return Response({'error': 'PLease enter a valid serach term.'}, status=400)
+        return Response({'error': 'Please enter a valid serach term.'}, status=400)
     try:
         #filtering on name cateorgy and price fields as string (case sensitive)
         items = Clothing.objects.filter(Q(name__icontains=keyword) | Q(category__icontains=keyword) | Q(category__icontains=keyword)).order_by('price')
@@ -110,7 +109,7 @@ class ClothingDetailView(RetrieveAPIView):
     serializer_class = ClothingSerializer
 
 
-# Register view with password hashing
+#REGISTER VIEW
 @csrf_exempt
 def RegisterUser(request):
     if request.method == 'POST':
@@ -118,7 +117,7 @@ def RegisterUser(request):
             data = json.loads(request.body)
             required_fields = ['username', 'email', 'password']
             
-            # Validate the fields
+            #validate the fields
             errors = user_credentials(data, required_fields)
             if errors:
                 return JsonResponse({'error': errors}, status=400)
@@ -127,7 +126,7 @@ def RegisterUser(request):
             email = data['email'].strip().lower()
             password = data['password']
 
-            # Check if username or email already exists
+            #check if username/email already exists
             if UserProfile.objects.filter(username=username).exists():
                 return JsonResponse({'error': 'Username already exists'}, status=400)
             if UserProfile.objects.filter(email=email).exists():
@@ -212,7 +211,8 @@ class ClothingListView(APIView):
                 return Response(ClothingSerializer(clothing_item).data, status=status.HTTP_201_CREATED)
 
             except Exception as img_process_error:
-                clothing_item.delete()  # Rollback: delete the saved item if image processing failed
+                #delete the image is the process fails
+                clothing_item.delete()
                 return Response({"error": f"Error processing image: {str(img_process_error)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         except Exception as save_error:
