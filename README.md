@@ -37,13 +37,13 @@ Justibuy is a mobile application that helps users find affordable fashion pieces
 3. python manage.py migrate
 4. python manage.py runserver
 
-#### React Native & Expo Frontend
+### React Native & Expo Frontend
 
 1. cd Justibuy/MyApp
 2. npm install
 3. npx expo start
 
-##### Running Tests
+### Running Tests
 1. cd backend
 2. python manage.py test api.tests.class_tests.ClothingSerializerTest
 3. python manage.py test api.tests.class_tests.UserAuthTests
