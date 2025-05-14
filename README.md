@@ -43,4 +43,11 @@ Justibuy is a mobile application that helps users find affordable fashion pieces
 2. npm install
 3. npx expo start
 
+##### Running Tests
+1. cd backend
+2. python manage.py test api.tests.class_tests.ClothingSerializerTest
+3. python manage.py test api.tests.class_tests.UserAuthTests
+4. python manage.py test api.tests.system_tests.AuthorisedUserTests
+5. python manage.py test api.tests.system_tests.ValidImageSearchTest
+
 
