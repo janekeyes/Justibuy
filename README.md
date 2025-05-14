@@ -49,5 +49,13 @@ Justibuy is a mobile application that helps users find affordable fashion pieces
 3. python manage.py test api.tests.class_tests.UserAuthTests
 4. python manage.py test api.tests.system_tests.AuthorisedUserTests
 5. python manage.py test api.tests.system_tests.ValidImageSearchTest
-
+6. python manage.py test api.tests.system_tests.WishlistTest
+7. python manage.py test api.tests.system_tests.SearchByKeywordTest
+8. python manage.py test api.tests.integration_tests.ClothingSearchViewTest
+9. python manage.py test api.tests.integration_tests.KeywordSearchTest
+10. python manage.py test api.tests.integration_tests.ClothingUploadTest
+11. python manage.py test api.tests.unit_tests.TestORBDetection
+12. python manage.py test api.tests.unit_tests.ConvertDescriptorsTest
+13. python manage.py test api.tests.unit_tests.TopMatchTest
+14. python manage.py test api.tests.unit_tests.ReturnMatchesTest
 
